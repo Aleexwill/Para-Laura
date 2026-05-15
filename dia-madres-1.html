@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Acceso restringido 🔒</title>
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300;1,400&family=Lato:wght@300;400&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --rose: #c9748a; --blush: #f2d4db; --cream: #fdf8f4;
+    --deep: #5c2d3e; --gold: #c9a96e; --text: #3a2030; --dark: #1a0d12;
+  }
+  html, body { min-height: 100%; font-family: 'Lato', sans-serif; color: var(--text); overflow-x: hidden; }
+
+  .petals { position: fixed; top:0; left:0; width:100%; height:100%; pointer-events:none; z-index:0; overflow:hidden; display:none; }
+  .petals.active { display:block; }
+  .petal { position:absolute; top:-60px; opacity:0; animation:fall linear infinite; }
+  @keyframes fall {
+    0%   { transform:translateY(0) rotate(0deg) scale(0.8); opacity:0; }
+    10%  { opacity:0.55; }
+    90%  { opacity:0.35; }
+    100% { transform:translateY(110vh) rotate(360deg) scale(1.1); opacity:0; }
+  }
+
+  .screen { display:none; min-height:100vh; width:100%; position:relative; z-index:1; }
+  .screen.active { display:flex; }
+
+  .auth-screen {
+    background:var(--dark); flex-direction:column; align-items:center;
+    justify-content:center; padding:40px 24px; text-align:center;
+  }
+  .lock-icon { font-size:2.5rem; margin-bottom:24px; animation:pulse 2.5s ease-in-out infinite; }
+  @keyframes pulse { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.1);opacity:0.8;} }
+
+  .auth-tag { font-size:0.6rem; letter-spacing:4px; text-transform:uppercase; color:var(--gold); margin-bottom:16px; }
+  .auth-title { font-family:'Cormorant Garamond',serif; font-size:clamp(1.8rem,7vw,2.6rem); font-weight:300; color:#fff; line-height:1.2; margin-bottom:10px; }
+  .auth-title em { font-style:italic; color:var(--rose); }
+  .auth-sub { font-size:0.8rem; color:#a08090; margin-bottom:36px; line-height:1.6; max-width:320px; }
+
+  .btn-row { display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:16px; }
+  .btn { padding:12px 32px; border:none; border-radius:2px; font-family:'Lato',sans-serif; font-size:0.75rem; letter-spacing:2px; text-transform:uppercase; cursor:pointer; transition:all 0.25s ease; }
+  .btn-yes { background:var(--rose); color:#fff; }
+  .btn-yes:hover { background:#b5607a; }
+  .btn-no { background:transparent; color:#a08090; border:1px solid #3a2030; }
+  .btn-no:hover { border-color:var(--rose); color:var(--rose); }
+
+  .pin-wrap { width:100%; max-width:280px; margin-bottom:20px; }
+  .pin-input {
+    width:100%; background:#2a1520; border:1px solid #3a2030; border-radius:2px;
+    color:#fff; font-family:'Cormorant Garamond',serif; font-size:1.6rem;
+    text-align:center; padding:14px; outline:none; letter-spacing:6px; transition:border-color 0.25s;
+  }
+  .pin-input:focus { border-color:var(--gold); }
+  .pin-input.error  { border-color:#e05070; animation:shake 0.4s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0);} 25%{transform:translateX(-8px);} 75%{transform:translateX(8px);} }
+  .error-msg { font-size:0.7rem; color:#e05070; letter-spacing:1px; margin-top:8px; min-height:16px; text-align:center; }
+
+  .auth-divider { width:60px; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); margin:0 auto 28px; }
+
+  /* Card screen */
+  .card-screen { background:#fdf8f4; flex-direction:column; align-items:center; }
+  .wrapper { position:relative; z-index:1; max-width:540px; width:100%; margin:0 auto; padding:40px 20px 60px; display:flex; flex-direction:column; align-items:center; }
+  .hero { width:100%; text-align:center; padding:50px 30px 40px; background:linear-gradient(160deg,#f9edf0 0%,#fdf4f7 60%,#f5e8d8 100%); border-top:3px solid var(--gold); opacity:0; transform:translateY(20px); animation:fadeUp 1s ease 0.3s forwards; }
+  .icon-wrap { font-size:3rem; display:block; margin-bottom:16px; animation:pulse 3s ease-in-out infinite; }
+  .subtitle { font-size:0.7rem; letter-spacing:4px; text-transform:uppercase; color:var(--gold); margin-bottom:10px; }
+  .title { font-family:'Cormorant Garamond',serif; font-size:clamp(2.2rem,8vw,3.2rem); font-weight:300; color:var(--deep); line-height:1.1; }
+  .title em { font-style:italic; color:var(--rose); }
+  .divider-gold { width:100%; height:1px; background:linear-gradient(90deg,transparent,var(--gold),transparent); opacity:0; animation:fadeIn 1s ease 1s forwards; }
+  .card { width:100%; background:#fff; padding:40px 36px; box-shadow:0 4px 40px rgba(90,30,50,0.08); opacity:0; transform:translateY(20px); animation:fadeUp 1s ease 0.8s forwards; }
+  .quote-mark { font-family:'Cormorant Garamond',serif; font-size:5rem; line-height:0.5; color:var(--blush); display:block; margin-bottom:16px; font-weight:300; }
+  .message { font-family:'Cormorant Garamond',serif; font-size:clamp(1.05rem,3.5vw,1.2rem); font-weight:300; line-height:1.85; color:var(--text); }
+  .message p { margin-bottom:1.2em; }
+  .message p:last-child { margin-bottom:0; }
+  .highlight { font-style:italic; color:var(--rose); }
+  .firma { width:100%; background:linear-gradient(160deg,#f9edf0,#f5e8d8); padding:30px 36px; border-bottom:3px solid var(--gold); text-align:center; opacity:0; transform:translateY(20px); animation:fadeUp 1s ease 1.2s forwards; }
+  .firma-label { font-size:0.65rem; letter-spacing:3px; text-transform:uppercase; color:var(--gold); margin-bottom:8px; }
+  .firma-text { font-family:'Cormorant Garamond',serif; font-size:1.4rem; font-style:italic; color:var(--deep); font-weight:300; }
+  .hearts { margin-top:8px; font-size:1.1rem; letter-spacing:4px; }
+  .footer-note { margin-top:32px; text-align:center; font-size:0.7rem; letter-spacing:2px; text-transform:uppercase; color:var(--gold); opacity:0; animation:fadeIn 1s ease 2s forwards; }
+
+  @keyframes fadeUp { to { opacity:1; transform:translateY(0); } }
+  @keyframes fadeIn { to { opacity:1; } }
+
+  .overlay { position:fixed; inset:0; background:var(--dark); z-index:999; opacity:0; pointer-events:none; transition:opacity 0.5s ease; }
+  .overlay.fade-in { opacity:1; pointer-events:all; }
+</style>
+</head>
+<body>
+
+<div class="overlay" id="overlay"></div>
+<div class="petals" id="petals"></div>
+
+<!-- S1: ¿Eres Laura Ocampo? -->
+<div class="screen auth-screen active" id="s1">
+  <div class="lock-icon">🔒</div>
+  <div class="auth-tag">Acceso restringido</div>
+  <h2 class="auth-title">¿Eres<br><em>Laura Ocampo</em>?</h2>
+  <p class="auth-sub">Este mensaje fue creado exclusivamente para una persona.<br>Por favor, confirmá tu identidad.</p>
+  <div class="auth-divider"></div>
+  <div class="btn-row">
+    <button class="btn btn-yes" onclick="goTo('s2')">Sí, soy yo</button>
+    <button class="btn btn-no"  onclick="goTo('s_wrong')">No soy ella</button>
+  </div>
+</div>
+
+<!-- S_WRONG: No sos Laura -->
+<div class="screen auth-screen" id="s_wrong">
+  <div class="lock-icon">🚫</div>
+  <div class="auth-tag">Acceso denegado</div>
+  <h2 class="auth-title" style="margin-bottom:12px">Este mensaje<br>no es para vos.</h2>
+  <p class="auth-sub">Andá a comprarle flores a tu mamá mejor. 🌸</p>
+  <div class="auth-divider"></div>
+  <button class="btn btn-no" onclick="goTo('s1')" style="margin-top:8px">← Volver</button>
+</div>
+
+<!-- S2: Pregunta de seguridad -->
+<div class="screen auth-screen" id="s2">
+  <div class="lock-icon">🛡️</div>
+  <div class="auth-tag">Verificación de identidad</div>
+  <h2 class="auth-title" style="margin-bottom:12px">Pregunta<br><em>de seguridad</em></h2>
+  <p class="auth-sub">Solo la persona correcta sabe la respuesta.</p>
+  <div class="auth-divider"></div>
+  <p style="color:#d4a0b0;font-family:'Cormorant Garamond',serif;font-size:1.15rem;margin-bottom:20px;font-style:italic;">
+    ¿Cuántos hijos tenés?
+  </p>
+  <div class="pin-wrap">
+    <input class="pin-input" id="pinInput" type="number" min="0" max="99" placeholder="—"
+      onkeydown="if(event.key==='Enter') checkPin()">
+    <div class="error-msg" id="pinError"></div>
+  </div>
+  <div class="btn-row">
+    <button class="btn btn-yes" onclick="checkPin()">Confirmar</button>
+  </div>
+</div>
+
+<!-- S3: ¿Estás segura? -->
+<div class="screen auth-screen" id="s3">
+  <div class="lock-icon">💌</div>
+  <div class="auth-tag">Última verificación</div>
+  <h2 class="auth-title" style="margin-bottom:12px">Identidad<br><em>confirmada.</em></h2>
+  <p class="auth-sub">
+    Hay algo esperándote del otro lado.<br>
+    Algo que fue escrito solo para vos.<br><br>
+    <span style="color:var(--gold);">¿Estás segura de que querés ver lo que sigue?</span>
+  </p>
+  <div class="auth-divider"></div>
+  <div class="btn-row">
+    <button class="btn btn-yes" onclick="revealCard()">Sí, quiero verlo 🌸</button>
+    <button class="btn btn-no"  onclick="goTo('s3b')">Todavía no...</button>
+  </div>
+</div>
+
+<!-- S3b: Todavía no -->
+<div class="screen auth-screen" id="s3b">
+  <div class="lock-icon">🥺</div>
+  <div class="auth-tag">En serio...</div>
+  <h2 class="auth-title" style="margin-bottom:12px">¿<em>Todavía</em> no?</h2>
+  <p class="auth-sub">Esto te lo merecés, Laura.<br>Tomá aire y cuando estés lista, volvé.</p>
+  <div class="auth-divider"></div>
+  <button class="btn btn-yes" onclick="goTo('s3')" style="margin-top:8px">Ya estoy lista ✨</button>
+</div>
+
+<!-- S4: La tarjeta -->
+<div class="screen card-screen" id="s4">
+  <div class="wrapper">
+    <div class="hero">
+      <span class="icon-wrap">🌸</span>
+      <div class="subtitle">Feliz Día</div>
+      <h1 class="title">A ti, que eres<br><em>mamá primero</em></h1>
+    </div>
+    <div class="divider-gold"></div>
+    <div class="card">
+      <span class="quote-mark">"</span>
+      <div class="message">
+        <p>A ti, que he visto crecer como madre: <span class="highlight">gracias por ser la mujer más fuerte</span>, por apoyarme en los momentos más difíciles. Casi no hay palabras para describir todo lo que sos.</p>
+        <p>Hemos pasado juntos muchos momentos, buenos y malos, pero a pesar de todo <span class="highlight">siempre eres mamá primero</span>. Velás por nuestros hijos, estás ahí para apoyar, consentir, guiar y educar. Peleás cada una de las peleas de Mell a su lado para que ella se supere día a día, llenándote de orgullo.</p>
+        <p>Y capaz no te das cuenta de lo que hacés, pero <span class="highlight">yo soy un espectador y tu admirador número 1</span>, viendo cómo podés con la carga de criar a un recién nacido y a una niña —que no es nada fácil— para que aprenda. Y llevás a espaldas el dolor de una criatura que no llegamos a tener en nuestros brazos.</p>
+        <p>Un día me dijiste que tenías temor de cómo serías como mamá con más de un hijo. Y yo, que lo veo todos los días, puedo decirte que <span class="highlight">estás dando amor incondicional a ambos</span>.</p>
+        <p>Por eso, y por mucho más: <span class="highlight">gracias por ser una gran mamá.</span></p>
+      </div>
+    </div>
+    <div class="firma">
+      <div class="firma-label">Con todo el amor</div>
+      <div class="firma-text">Tus hijos y tu marido</div>
+      <div class="hearts">🤍 🌸 🤍</div>
+    </div>
+    <div class="footer-note">15 de mayo · Día de las Madres</div>
+  </div>
+</div>
+
+<script>
+  const overlay = document.getElementById('overlay');
+
+  function goTo(id) {
+    overlay.classList.add('fade-in');
+    setTimeout(() => {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      window.scrollTo(0, 0);
+      overlay.classList.remove('fade-in');
+    }, 450);
+  }
+
+  function checkPin() {
+    const val = document.getElementById('pinInput').value.trim();
+    const input = document.getElementById('pinInput');
+    const err   = document.getElementById('pinError');
+    if (val === '3') {
+      err.textContent = '';
+      goTo('s3');
+    } else {
+      input.classList.add('error');
+      err.textContent = val === '' ? 'Ingresá un número.' : 'Hmm... eso no suena correcto. 🤔';
+      setTimeout(() => input.classList.remove('error'), 500);
+    }
+  }
+
+  function revealCard() {
+    overlay.classList.add('fade-in');
+    setTimeout(() => {
+      document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+      document.getElementById('s4').classList.add('active');
+      document.getElementById('petals').classList.add('active');
+      window.scrollTo(0, 0);
+      overlay.classList.remove('fade-in');
+      spawnPetals();
+    }, 450);
+  }
+
+  function spawnPetals() {
+    const container = document.getElementById('petals');
+    const symbols = ['🌸','🌺','✿','❀','🌷'];
+    for (let i = 0; i < 20; i++) {
+      const p = document.createElement('div');
+      p.className = 'petal';
+      p.textContent = symbols[Math.floor(Math.random() * symbols.length)];
+      p.style.left = Math.random() * 100 + 'vw';
+      p.style.fontSize = (0.8 + Math.random() * 1) + 'rem';
+      p.style.animationDuration = (8 + Math.random() * 12) + 's';
+      p.style.animationDelay = (Math.random() * 10) + 's';
+      container.appendChild(p);
+    }
+  }
+</script>
+</body>
+</html>
